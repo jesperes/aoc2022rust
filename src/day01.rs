@@ -32,15 +32,9 @@ pub fn solve() -> (i32, i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test::Bencher;
 
     #[test]
     fn solution() {
         assert_eq!((69836, 207968), solve());
-    }
-
-    #[bench]
-    fn bench(b: &mut Bencher) {
-        b.iter(|| solve());
     }
 }
