@@ -1,8 +1,9 @@
 extern crate test;
-use std::fs;
 
 pub fn solve() -> (i32, i32) {
-    let s = fs::read_to_string("inputs/input01.txt").unwrap();
+    let bytes = include_bytes!("../inputs/input01.txt");
+    let s = String::from_utf8_lossy(bytes);
+
     let mut a: i32 = 0;
     let mut b: i32 = 0;
     let mut c: i32 = 0;

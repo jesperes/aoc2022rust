@@ -8,23 +8,29 @@ fn run_puzzle<F>(name: &str, f: F)
 where
     F: Fn(),
 {
-    const REPS: i32 = 1000;
+    const MAX_REPS: u128 = 10_000;
+    const MAX_SECS: u64 = 1;
     let start = std::time::Instant::now();
-    for _ in 0..REPS {
+    let mut counter: u128 = 0;
+    loop {
         f();
+        counter += 1;
+        if start.elapsed().as_secs() > MAX_SECS || counter >= MAX_REPS {
+            break;
+        }
     }
-    let avg = start.elapsed().as_micros() / REPS as u128;
-    println!("{}: {:?} μs", name, avg);
+    let avg = start.elapsed().as_nanos() / counter;
+    println!("{}: {:?} ns ({} iters)", name, avg, counter);
 }
 
 fn main() {
     run_puzzle("day01", || {
-        day01::solve();
+        assert_eq!((69836, 207968), day01::solve());
     });
     run_puzzle("day02", || {
-        day02::solve();
+        assert_eq!((14297, 10498), day02::solve());
     });
     run_puzzle("day03", || {
-        day03::solve();
+        assert_eq!((8349, 2681), day03::solve());
     });
 }
