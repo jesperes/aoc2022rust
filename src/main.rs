@@ -3,6 +3,7 @@
 mod day01;
 mod day02;
 mod day03;
+mod day04;
 
 fn run_puzzle<F>(name: &str, f: F)
 where
@@ -32,5 +33,8 @@ fn main() {
     });
     run_puzzle("day03", || {
         assert_eq!((8349, 2681), day03::solve());
+    });
+    run_puzzle("day04", || {
+        assert_eq!((582, 893), day04::solve());
     });
 }
