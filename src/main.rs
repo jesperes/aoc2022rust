@@ -5,6 +5,8 @@ mod day02;
 mod day03;
 mod day04;
 mod day05;
+mod day06;
+
 fn run_puzzle<F>(name: &str, f: F)
 where
     F: Fn(),
@@ -42,5 +44,8 @@ fn main() {
             ("CNSZFDVLJ".to_string(), "QNDWLMGNS".to_string()),
             day05::solve()
         );
+    });
+    run_puzzle("day06", || {
+        assert_eq!((1802, 3551), day06::solve());
     });
 }
