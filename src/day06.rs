@@ -153,6 +153,7 @@ pub fn solve() -> (i32, i32) {
             continue;
         } else {
             p2 = i as i32;
+            break;
         }
     }
 
