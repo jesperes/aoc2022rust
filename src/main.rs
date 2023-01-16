@@ -8,6 +8,7 @@ mod day05;
 mod day06;
 mod day07;
 mod day08;
+mod day09;
 
 type NanoSecs = u128;
 
@@ -96,6 +97,12 @@ fn main() {
             name: "day08".to_string(),
             fun: || {
                 assert_eq!((1684, 486540), day08::solve());
+            },
+        },
+        Puzzle {
+            name: "day09".to_string(),
+            fun: || {
+                assert_eq!((6311, 2482), day09::solve());
             },
         },
     ]);
