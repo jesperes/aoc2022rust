@@ -2,16 +2,6 @@ enum Op {
     PLUS(i64),
     MULT(i64),
     SQUARED,
-    UNDEFINED,
-}
-
-fn eval(op: &Op, arg: i64) -> i64 {
-    match op {
-        Op::MULT(v) => v * arg,
-        Op::PLUS(v) => v + arg,
-        Op::SQUARED => arg * arg,
-        _ => panic!(),
-    }
 }
 
 struct Monkey {
@@ -19,8 +9,8 @@ struct Monkey {
     items: Vec<i64>,
     op: Op,
     divisible_by: i64,
-    on_true: i64,
-    on_false: i64,
+    on_true: usize,
+    on_false: usize,
 }
 
 fn parse(buf: &[u8]) -> Vec<Monkey> {
@@ -30,14 +20,13 @@ fn parse(buf: &[u8]) -> Vec<Monkey> {
     for line in String::from_utf8_lossy(buf).trim().split("\n") {
         let words = line.trim().split([' ', ':', ',']);
         let words_vec = words.collect::<Vec<&str>>();
-        // println!("words = {:?}", words_vec);
         match words_vec[..] {
             ["Monkey", ..] => {
                 current = monkeys.len();
                 monkeys.push(Monkey {
                     num: current,
                     items: Vec::new(),
-                    op: Op::UNDEFINED,
+                    op: Op::PLUS(0),
                     on_true: 0,
                     divisible_by: 0,
                     on_false: 0,
@@ -78,38 +67,49 @@ fn parse(buf: &[u8]) -> Vec<Monkey> {
 }
 
 fn simulate(monkeys: &Vec<Monkey>, rounds: i32, part1: bool) -> i64 {
-    let mut count: Vec<i64> = Vec::new();
+    let mut count: Vec<usize> = Vec::new();
     let mut items: Vec<Vec<i64>> = Vec::new();
-    let mut lcd: i64 = 1;
+    let mut lcd0: i64 = 1;
 
     for i in 0..monkeys.len() {
         count.push(0);
         items.push(monkeys[i].items.clone());
         if !part1 {
-            lcd *= monkeys[i].divisible_by;
+            lcd0 *= monkeys[i].divisible_by;
         }
     }
+
+    let lcd = lcd0;
 
     for _ in 1..=rounds {
         for monkey in monkeys {
             let monkey_idx = monkey.num;
-            count[monkey_idx] += items[monkey_idx].len() as i64;
-            let items_to_move: Vec<i64> = items[monkey_idx].clone();
-            items[monkey_idx].clear();
+            let num_items = items[monkey_idx].len();
+            count[monkey_idx] += num_items;
 
-            for item in items_to_move {
-                let x = eval(&monkey.op, item);
-                let worry_level: i64 = match part1 {
+            for item in 0..num_items {
+                let arg = items[monkey_idx][item];
+
+                let x = match monkey.op {
+                    Op::MULT(v) => v * arg,
+                    Op::PLUS(v) => v + arg,
+                    Op::SQUARED => arg * arg,
+                };
+
+                let worry_level = match part1 {
                     true => x / 3,
                     false => x % lcd,
                 };
+
                 let dest_monkey = if worry_level % monkey.divisible_by == 0 {
                     monkey.on_true
                 } else {
                     monkey.on_false
                 };
-                items[dest_monkey as usize].push(worry_level);
+
+                items[dest_monkey].push(worry_level);
             }
+
             items[monkey_idx].clear();
         }
     }
@@ -118,7 +118,7 @@ fn simulate(monkeys: &Vec<Monkey>, rounds: i32, part1: bool) -> i64 {
     let mut b: usize = 0;
 
     for i in 0..count.len() {
-        let c = count[i] as usize;
+        let c = count[i];
         if c > a {
             b = a;
             a = c
