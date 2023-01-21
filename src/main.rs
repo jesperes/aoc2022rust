@@ -10,6 +10,7 @@ mod day07;
 mod day08;
 mod day09;
 mod day10;
+mod day11;
 
 type NanoSecs = u128;
 
@@ -38,12 +39,12 @@ fn run_puzzles(puzzles: Vec<Puzzle>) {
 
         let avg: NanoSecs = runtimes.iter().sum::<NanoSecs>() / runtimes.len() as NanoSecs;
         total_avg_runtime += avg;
-        println!("{}: {:10} ns {:10} μs", p.name, avg, avg as f64 / 1_000.0);
+        println!("{}: {:10} μs", p.name, (avg as f64 / 1_000.0) as i64);
     }
 
     println!(
         "Total runtime (avg): {} μs",
-        total_avg_runtime as f64 / 1000.0
+        (total_avg_runtime as f64 / 1000.0) as i64
     );
 }
 
@@ -124,6 +125,12 @@ fn main() {
                     ),
                     day10::solve()
                 );
+            },
+        },
+        Puzzle {
+            name: "day11".to_string(),
+            fun: || {
+                assert_eq!((102399, 23641658401), day11::solve());
             },
         },
     ]);
