@@ -23,7 +23,7 @@ fn run_puzzles(puzzles: Vec<Puzzle>) {
     let mut total_avg_runtime: NanoSecs = 0;
 
     for p in puzzles {
-        const MAX_REPS: usize = 100;
+        const MAX_REPS: usize = 1000;
         const MAX_SECS: u64 = 1;
         let mut runtimes: Vec<NanoSecs> = vec![];
         let start = std::time::Instant::now();

@@ -27,8 +27,8 @@ fn parse(buf: &[u8]) -> Vec<Monkey> {
                     num: current,
                     items: Vec::new(),
                     op: Op::PLUS(0),
-                    on_true: 0,
                     divisible_by: 0,
+                    on_true: 0,
                     on_false: 0,
                 });
             }
@@ -90,15 +90,18 @@ fn simulate(monkeys: &Vec<Monkey>, rounds: i32, part1: bool) -> i64 {
             for item in 0..num_items {
                 let arg = items[monkey_idx][item];
 
-                let x = match monkey.op {
-                    Op::MULT(v) => v * arg,
-                    Op::PLUS(v) => v + arg,
-                    Op::SQUARED => arg * arg,
-                };
-
-                let worry_level = match part1 {
-                    true => x / 3,
-                    false => x % lcd,
+                let worry_level = if part1 {
+                    (match monkey.op {
+                        Op::MULT(v) => v * arg,
+                        Op::PLUS(v) => v + arg,
+                        Op::SQUARED => arg * arg,
+                    }) / 3
+                } else {
+                    (match monkey.op {
+                        Op::MULT(v) => v * arg,
+                        Op::PLUS(v) => v + arg,
+                        Op::SQUARED => arg * arg,
+                    }) % lcd
                 };
 
                 let dest_monkey = if worry_level % monkey.divisible_by == 0 {
