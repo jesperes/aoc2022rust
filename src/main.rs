@@ -1,4 +1,4 @@
-#![feature(test)]
+#![feature(test, map_first_last)]
 
 mod day01;
 mod day02;
@@ -11,6 +11,7 @@ mod day08;
 mod day09;
 mod day10;
 mod day11;
+mod day12;
 
 type NanoSecs = u128;
 
@@ -23,7 +24,7 @@ fn run_puzzles(puzzles: Vec<Puzzle>) {
     let mut total_avg_runtime: NanoSecs = 0;
 
     for p in puzzles {
-        const MAX_REPS: usize = 1000;
+        const MAX_REPS: usize = 100;
         const MAX_SECS: u64 = 1;
         let mut runtimes: Vec<NanoSecs> = vec![];
         let start = std::time::Instant::now();
@@ -131,6 +132,12 @@ fn main() {
             name: "day11".to_string(),
             fun: || {
                 assert_eq!((102399, 23641658401), day11::solve());
+            },
+        },
+        Puzzle {
+            name: "day12".to_string(),
+            fun: || {
+                assert_eq!((370, 363), day12::solve());
             },
         },
     ]);
