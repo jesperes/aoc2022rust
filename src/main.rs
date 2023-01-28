@@ -13,6 +13,7 @@ mod day10;
 mod day11;
 mod day12;
 mod day13;
+mod day14;
 
 type NanoSecs = u128;
 
@@ -54,27 +55,19 @@ fn main() {
     run_puzzles(vec![
         Puzzle {
             name: "day01".to_string(),
-            fun: || {
-                assert_eq!((69836, 207968), day01::solve());
-            },
+            fun: || assert_eq!((69836, 207968), day01::solve()),
         },
         Puzzle {
             name: "day02".to_string(),
-            fun: || {
-                assert_eq!((14297, 10498), day02::solve());
-            },
+            fun: || assert_eq!((14297, 10498), day02::solve()),
         },
         Puzzle {
             name: "day03".to_string(),
-            fun: || {
-                assert_eq!((8349, 2681), day03::solve());
-            },
+            fun: || assert_eq!((8349, 2681), day03::solve()),
         },
         Puzzle {
             name: "day04".to_string(),
-            fun: || {
-                assert_eq!((582, 893), day04::solve());
-            },
+            fun: || assert_eq!((582, 893), day04::solve()),
         },
         Puzzle {
             name: "day05".to_string(),
@@ -82,32 +75,24 @@ fn main() {
                 assert_eq!(
                     ("CNSZFDVLJ".to_string(), "QNDWLMGNS".to_string()),
                     day05::solve()
-                );
+                )
             },
         },
         Puzzle {
             name: "day06".to_string(),
-            fun: || {
-                assert_eq!((1802, 3551), day06::solve());
-            },
+            fun: || assert_eq!((1802, 3551), day06::solve()),
         },
         Puzzle {
             name: "day07".to_string(),
-            fun: || {
-                assert_eq!((1543140, 1117448), day07::solve());
-            },
+            fun: || assert_eq!((1543140, 1117448), day07::solve()),
         },
         Puzzle {
             name: "day08".to_string(),
-            fun: || {
-                assert_eq!((1684, 486540), day08::solve());
-            },
+            fun: || assert_eq!((1684, 486540), day08::solve()),
         },
         Puzzle {
             name: "day09".to_string(),
-            fun: || {
-                assert_eq!((6311, 2482), day09::solve());
-            },
+            fun: || assert_eq!((6311, 2482), day09::solve()),
         },
         Puzzle {
             name: "day10".to_string(),
@@ -116,13 +101,13 @@ fn main() {
                     (
                         14060,
                         "\
-███...██..███..█..█.████.█..█.████...██.\
-█..█.█..█.█..█.█.█..█....█.█..█.......█.\
-█..█.█..█.█..█.██...███..██...███.....█.\
-███..████.███..█.█..█....█.█..█.......█.\
-█....█..█.█....█.█..█....█.█..█....█..█.\
-█....█..█.█....█..█.█....█..█.████..██..\
-"
+    ███...██..███..█..█.████.█..█.████...██.\
+    █..█.█..█.█..█.█.█..█....█.█..█.......█.\
+    █..█.█..█.█..█.██...███..██...███.....█.\
+    ███..████.███..█.█..█....█.█..█.......█.\
+    █....█..█.█....█.█..█....█.█..█....█..█.\
+    █....█..█.█....█..█.█....█..█.████..██..\
+    "
                         .to_string()
                     ),
                     day10::solve()
@@ -131,21 +116,19 @@ fn main() {
         },
         Puzzle {
             name: "day11".to_string(),
-            fun: || {
-                assert_eq!((102399, 23641658401), day11::solve());
-            },
+            fun: || assert_eq!((102399, 23641658401), day11::solve()),
         },
         Puzzle {
             name: "day12".to_string(),
-            fun: || {
-                assert_eq!((370, 363), day12::solve());
-            },
+            fun: || assert_eq!((370, 363), day12::solve()),
         },
         Puzzle {
             name: "day13".to_string(),
-            fun: || {
-                assert_eq!((5198, 22344), day13::solve());
-            },
+            fun: || assert_eq!((5198, 22344), day13::solve()),
+        },
+        Puzzle {
+            name: "day14".to_string(),
+            fun: || assert_eq!((696, 23610), day14::solve()),
         },
     ]);
 }
