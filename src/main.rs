@@ -1,4 +1,4 @@
-#![feature(test, map_first_last)]
+#![feature(test, int_roundings)]
 
 mod day01;
 mod day02;
@@ -14,6 +14,7 @@ mod day11;
 mod day12;
 mod day13;
 mod day14;
+mod day15;
 
 type NanoSecs = u128;
 
@@ -129,6 +130,10 @@ fn main() {
         Puzzle {
             name: "day14".to_string(),
             fun: || assert_eq!((696, 23610), day14::solve()),
+        },
+        Puzzle {
+            name: "day15".to_string(),
+            fun: || assert_eq!((4665948, 13543690671045), day15::solve()),
         },
     ]);
 }
