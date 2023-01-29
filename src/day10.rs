@@ -77,7 +77,9 @@ fn is_interesting_cycle(cycle: i64) -> bool {
 }
 
 fn draw(x: usize, pos: usize, crt: &mut Crt) {
-    if pos % 40 == x - 1 || pos % 40 == x || pos % 40 == x + 1 {
+    let x0 = x as i32;
+    let pos40 = (pos % 40) as i32;
+    if pos40 == x0 - 1 || pos40 == x0 || pos40 == x0 + 1 {
         crt[pos] = '█';
     } else {
         crt[pos] = '.';
