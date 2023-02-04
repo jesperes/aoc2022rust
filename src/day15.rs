@@ -1,6 +1,7 @@
 use lazy_regex::regex_captures;
 use std::collections::{HashMap, HashSet};
 
+// This actually needs to be i128, i64 is not enough
 type IntType = i128;
 type Coord = (IntType, IntType);
 type Line = (Coord, Coord);
