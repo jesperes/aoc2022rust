@@ -1,29 +1,49 @@
 use fnv::FnvHashMap; // faster hashmap
+use grid::Grid;
 use lazy_regex::regex_captures;
 
-type Bitmask = i128;
-type Valve = i32;
-type ValvePair = i32;
+type Bitmask = i64;
 
-// Map valve names to integers
-fn str_to_valve(s: &str) -> Valve {
-    let mut chars = s.chars();
-    let c1 = chars.next().unwrap() as i32;
-    let c2 = chars.next().unwrap() as i32;
-    c1 << 8 | c2
-}
+// Represent a valve as an integer 0..(26*26)
+// type Valve = i32;
+/// type ValvePair = i32;
 
-fn valve_pair(v1: &Valve, v2: &Valve) -> ValvePair {
-    v1 << 16 | v2
-}
+// // Map valve names to integers
+// fn str_to_valve(s: &str) -> Valve {
+//     let mut chars = s.chars();
+//     let base = 'A' as i32;
+//     let n1 = chars.next().unwrap() as i32 - base;
+//     let n2 = chars.next().unwrap() as i32 - base;
+//     (n1 * 26 + n2) as Valve
+// }
+
+// fn valve_mask(valve: &Valve) -> Bitmask {
+//     1 << valve
+// }
+
+type Flows = FnvHashMap<usize, i64>;
+type Indices = Vec<Bitmask>;
+type Graph = Vec<Vec<usize>>;
+type DistGrid = Grid<i64>;
+type AnswerMap = FnvHashMap<Bitmask, i64>;
 
 pub fn solve() -> (i64, i64) {
+    const NUM_LETTERS: usize = 26;
+    const NUM_VALVES: usize = NUM_LETTERS * NUM_LETTERS;
+
+    // Keep a map from valve name to an integer. The only valve name we actually
+    // care about is "AA" which is the start valve. All others can just be mapped to
+    // an arbitrary integer.
+    let mut idx: usize = 0;
+    let mut valve_map: FnvHashMap<String, usize> = FnvHashMap::default();
+    let mut start: usize = 0;
+
     let buf = include_bytes!("../inputs/input16.txt");
-    let mut graph: FnvHashMap<Valve, Vec<Valve>> = FnvHashMap::default();
-    let mut flows: FnvHashMap<Valve, i64> = FnvHashMap::default();
-    let mut valves: Vec<Valve> = Vec::new();
-    let mut indices: FnvHashMap<Valve, Bitmask> = FnvHashMap::default();
-    let mut dists: FnvHashMap<ValvePair, i64> = FnvHashMap::default();
+    let mut graph_pre: Vec<String> = Vec::new();
+    let mut graph: Graph = Vec::new();
+    let mut flows: Flows = FnvHashMap::default();
+    let mut indices: Indices = vec![];
+    let mut dists: DistGrid = Grid::new(NUM_VALVES, NUM_VALVES);
 
     for line in String::from_utf8_lossy(buf).trim().split("\n") {
         let (_, valve, flow_rate, leads_to) = regex_captures!(
@@ -32,53 +52,57 @@ pub fn solve() -> (i64, i64) {
         )
         .unwrap();
 
-        graph.insert(
-            str_to_valve(valve),
-            leads_to
-                .split(',')
-                .map(|s| str_to_valve(s.trim()))
-                .collect(),
-        );
+        valve_map.insert(valve.to_string(), idx);
+        if valve == "AA" {
+            start = idx;
+        }
 
-        valves.push(str_to_valve(valve));
+        indices.push(1 << idx);
 
         let fr = flow_rate.parse::<i64>().unwrap();
         if fr > 0 {
-            flows.insert(str_to_valve(valve), fr);
+            flows.insert(idx, fr);
         }
+
+        graph_pre.push(leads_to.to_string());
+        idx += 1;
     }
 
-    valves.sort();
+    let num_valves = idx;
 
-    for i in 0..valves.len() {
-        indices.insert(valves[i].clone(), 1 << i);
+    // Build the graph now that all valves have been mapped to integers
+    for i in 0..num_valves {
+        graph.push(
+            graph_pre[i]
+                .split(',')
+                .map(|s| *valve_map.get(s.to_string().trim()).unwrap())
+                .collect::<Vec<usize>>(),
+        );
     }
 
     // Distances between any pair of nodes (Floyd-Warshall)
-    for v in &valves {
-        for l in &valves {
-            let pair = valve_pair(v, l);
-            if graph.get(v).unwrap().contains(l) {
-                dists.insert(pair, 1);
+    for v in 0..num_valves {
+        for l in 0..num_valves {
+            if graph[v].contains(&l) {
+                dists[v][l] = 1;
             } else {
-                dists.insert(pair, 10000);
+                dists[v][l] = 10000;
             }
         }
     }
 
-    for k in &valves {
-        for i in &valves {
-            for j in &valves {
-                let dist_ij = *dists.get(&valve_pair(i, j)).unwrap();
-                let dist_ik = *dists.get(&valve_pair(i, k)).unwrap();
-                let dist_kj = *dists.get(&valve_pair(k, j)).unwrap();
-                dists.insert(valve_pair(i, j), dist_ij.min(dist_ik + dist_kj));
+    for k in 0..num_valves {
+        for i in 0..num_valves {
+            for j in 0..num_valves {
+                let dist_ij = dists[i][j];
+                let dist_ik = dists[i][k];
+                let dist_kj = dists[k][j];
+                dists[i][j] = dist_ij.min(dist_ik + dist_kj);
             }
         }
     }
 
     let mut answers_p1 = FnvHashMap::default();
-    let start = str_to_valve("AA");
     visit(start, 30, 0, 0, &mut answers_p1, &flows, &dists, &indices);
     let p1 = *answers_p1.values().max().unwrap();
 
@@ -98,15 +122,16 @@ pub fn solve() -> (i64, i64) {
 
     (p1, p2)
 }
+
 fn visit(
-    valve: Valve,
+    valve: usize,
     minutes: i64,
     bitmask: Bitmask,
     pressure: i64,
-    answer: &mut FnvHashMap<Bitmask, i64>,
-    flows: &FnvHashMap<Valve, i64>,
-    dists: &FnvHashMap<ValvePair, i64>,
-    indices: &FnvHashMap<Valve, Bitmask>,
+    answer: &mut AnswerMap,
+    flows: &Flows,
+    dists: &DistGrid,
+    indices: &Indices,
 ) {
     answer
         .entry(bitmask)
@@ -118,10 +143,10 @@ fn visit(
         .or_insert(pressure);
 
     for (valve2, flow) in flows {
-        let dist = dists.get(&valve_pair(&valve, valve2)).unwrap();
+        let dist = dists[valve][*valve2];
         let remaining_minutes = minutes - dist - 1;
         if remaining_minutes > 0 {
-            let i: Bitmask = *indices.get(valve2).unwrap();
+            let i: Bitmask = indices[*valve2];
             if bitmask & i == 0 {
                 visit(
                     *valve2,
