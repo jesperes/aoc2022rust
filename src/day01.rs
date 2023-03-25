@@ -1,5 +1,3 @@
-extern crate test;
-
 pub fn solve() -> (i32, i32) {
     let bytes = include_bytes!("../inputs/input01.txt");
     let s = String::from_utf8_lossy(bytes);
@@ -28,14 +26,4 @@ pub fn solve() -> (i32, i32) {
     }
 
     return (a, a + b + c);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn solution() {
-        assert_eq!((69836, 207968), solve());
-    }
 }

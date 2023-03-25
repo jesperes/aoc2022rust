@@ -1,5 +1,7 @@
 #![feature(test, int_roundings)]
 
+use std::time::Duration;
+
 mod day01;
 mod day02;
 mod day03;
@@ -17,7 +19,6 @@ mod day14;
 mod day15;
 mod day16;
 
-type NanoSecs = u128;
 struct Puzzle {
     name: String,
     fun: fn(),
@@ -27,38 +28,35 @@ impl Puzzle {
     fn make(day: i32, fun: fn()) -> Puzzle {
         Puzzle {
             name: format!("{:02}", day),
-            fun: fun,
+            fun,
         }
     }
 }
 
 fn run_puzzles(puzzles: Vec<Puzzle>) {
-    let mut total_avg_runtime: NanoSecs = 0;
-
     for p in puzzles {
-        const MAX_REPS: usize = 100;
+        const MAX_REPS: usize = 1000;
         const MAX_SECS: u64 = 1;
-        let mut runtimes: Vec<NanoSecs> = vec![];
+        let mut runtimes: Vec<Duration> = vec![];
         let start = std::time::Instant::now();
 
         loop {
             let t = std::time::Instant::now();
             (p.fun)();
-            runtimes.push(t.elapsed().as_nanos());
+            runtimes.push(t.elapsed());
             if start.elapsed().as_secs() >= MAX_SECS || runtimes.len() >= MAX_REPS {
                 break;
             }
         }
 
-        let avg: NanoSecs = runtimes.iter().sum::<NanoSecs>() / runtimes.len() as NanoSecs;
-        total_avg_runtime += avg;
-        println!("{}: {:10} μs", p.name, (avg as f64 / 1_000.0) as i64);
+        let avg_runtime = runtimes.iter().sum::<Duration>() / runtimes.len() as u32;
+        println!(
+            "Day {}: {:10} μs {:10} ns",
+            p.name,
+            avg_runtime.as_micros(),
+            avg_runtime.as_nanos()
+        );
     }
-
-    println!(
-        "Total runtime (avg): {} μs",
-        (total_avg_runtime as f64 / 1000.0) as i64
-    );
 }
 
 fn day5_sol() -> (String, String) {

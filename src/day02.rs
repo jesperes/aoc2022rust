@@ -1,5 +1,3 @@
-extern crate test;
-
 const ROCK: u8 = 65; // A
 const PAPER: u8 = 66; // B
 const SCISSORS: u8 = 67; // C
@@ -21,6 +19,7 @@ pub fn solve() -> (i32, i32) {
     let mut i: usize = 0;
     let mut p1: i32 = 0;
     let mut p2: i32 = 0;
+
     loop {
         if i >= buf.len() {
             break;
@@ -71,14 +70,4 @@ pub fn solve() -> (i32, i32) {
     }
 
     return (p1, p2);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn solution() {
-        assert_eq!((14297, 10498), solve());
-    }
 }

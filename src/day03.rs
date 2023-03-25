@@ -1,5 +1,3 @@
-extern crate test;
-
 use itertools::Itertools;
 
 type Mask = u64;
