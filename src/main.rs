@@ -18,7 +18,7 @@ mod day13;
 mod day14;
 mod day15;
 mod day16;
-
+mod day17;
 struct Puzzle {
     name: String,
     fun: fn(),
@@ -96,5 +96,6 @@ fn main() {
         Puzzle::make(14, || assert_eq!((696, 23610), day14::solve())),
         Puzzle::make(15, || assert_eq!((4665948, 13543690671045), day15::solve())),
         Puzzle::make(16, || assert_eq!((1376, 1933), day16::solve())),
+        Puzzle::make(17, || assert_eq!((0, 0), day17::solve())),
     ]);
 }
