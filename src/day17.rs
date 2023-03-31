@@ -189,24 +189,25 @@ pub fn solve() -> (i32, u64) {
     let mut p1: i32 = 0;
     let p1_limit = 2022;
 
-    // For p2, we drop 1 trillion rocks. We keep trace of cycles
+    // For p2, we drop 1 trillion rocks. We keep track of cycles
     // so that we do not need to actually drop the rocks which are part of
     // (full) cycles.
     let mut track_cycles = true;
     let mut p2_limit: u64 = 1_000_000_000_000;
-    let mut height_of_all_cycles: u64 = 0;
+    let mut cycle_height: u64 = 0;
+    let mut num_cycles: u64 = 0;
 
     for rock_num in 0.. {
         if rock_num == p1_limit {
             p1 = chamber.height;
         } else if rock_num == p2_limit {
-            let p2 = chamber.height as u64 + height_of_all_cycles;
+            let p2 = chamber.height as u64 + (num_cycles * cycle_height);
             return (p1, p2);
         }
 
         let mut rock = chamber.next_rock();
 
-        'inner: loop {
+        loop {
             let jet = chamber.next_jet();
 
             chamber.maybe_move_sideways(&mut rock, jet);
@@ -214,21 +215,19 @@ pub fn solve() -> (i32, u64) {
             if !chamber.maybe_drop(&mut rock) {
                 chamber.add_to_tower(rock);
 
-                if !track_cycles {
-                    break 'inner;
+                if track_cycles {
+                    if let Some((start, height)) = cycle_tracker.add_state(&jet, &chamber, rock_num)
+                    {
+                        // Reduce the p2 limit by a whole number of cycles, and then calculate
+                        // the total height contributed by the rocks which are part of the cycles.
+                        cycle_height = (chamber.height - height) as u64;
+                        let rocks_per_cycle = rock_num - start;
+                        num_cycles = (p2_limit - start).div_floor(rocks_per_cycle) - 1;
+                        p2_limit -= num_cycles * rocks_per_cycle;
+                        track_cycles = false;
+                    }
                 }
-
-                if let Some((start, height)) = cycle_tracker.add_state(&jet, &chamber, rock_num) {
-                    let cycle_height: u64 = (chamber.height - height) as u64;
-                    let rocks_per_cycle = rock_num as u64 - start;
-                    let num_cycles = (p2_limit - start).div_floor(rocks_per_cycle) - 1;
-
-                    height_of_all_cycles = cycle_height * num_cycles;
-                    p2_limit -= num_cycles * rocks_per_cycle;
-                    track_cycles = false;
-                }
-
-                break 'inner;
+                break;
             }
         }
     }
