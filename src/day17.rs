@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 type ChamberCoord = (i32, i32);
 type RockCoord = (i32, i32);
 type Delta = (i32, i32);
@@ -52,9 +50,16 @@ impl Rock {
         (coord.0 - self.left_edge, coord.1 - self.bottom_edge)
     }
 
+    fn rock_to_chamber_coords(&self, coord: RockCoord, delta: Delta) -> ChamberCoord {
+        (
+            coord.0 + self.left_edge + delta.0,
+            coord.1 + self.bottom_edge + delta.1,
+        )
+    }
+
     // If applying a given delta, does this rock cover the specified
     // chamber coordinates?
-    fn covers(&self, chamber_coord: ChamberCoord, delta: Delta) -> bool {
+    fn covers(&self, chamber_coord: ChamberCoord) -> bool {
         let transformed_chamber_coord: RockCoord = self.chamber_to_rock_coords(chamber_coord);
         self.coords
             .iter()
@@ -67,7 +72,8 @@ struct Chamber {
     jet_index: usize,
     shape_index: usize,
     height: i32,
-    num_dropped_rocks: i32,
+    // num_dropped_rocks: i32,
+    tower: Vec<u8>,
 }
 
 impl Chamber {
@@ -77,19 +83,25 @@ impl Chamber {
             jet_index: 0,
             shape_index: 0,
             height: 0,
-            num_dropped_rocks: 0,
+            // num_dropped_rocks: 0,
+            tower: vec![0; 4096],
         }
     }
 
+    fn is_chamber_coord_part_of_tower(&self, chamber_coord: &ChamberCoord) -> bool {
+        assert!((0..7).contains(&chamber_coord.0));
+        assert!(chamber_coord.1 >= 0);
+        self.tower[chamber_coord.1 as usize] & (1 << chamber_coord.0) != 0
+    }
+
     fn next_jet(&mut self) -> Jet {
-        let c = self.jets[self.jet_index];
+        let mut c = self.jets[self.jet_index];
         if c as char == '\n' {
             self.jet_index = 0;
-            Jet::new(self.jets[0] as char)
-        } else {
-            self.jet_index += 1;
-            Jet::new(c as char)
+            c = self.jets[0];
         }
+        self.jet_index += 1;
+        return Jet::new(c as char);
     }
 
     fn next_rock(&mut self) -> Rock {
@@ -99,12 +111,17 @@ impl Chamber {
         Rock::new(next_shape, self.height + 3)
     }
 
-    fn maybe_move_sideways(&self, rock: &mut Rock, jet: Jet) {
-        rock.left_edge = (rock.left_edge + jet.dx).min(7 - rock.width).max(0);
+    fn maybe_move_sideways(&self, rock: &mut Rock, jet: Jet) -> bool {
+        if self.is_valid_rock_position(rock, (jet.dx, 0)) {
+            rock.left_edge = (rock.left_edge + jet.dx).min(7 - rock.width).max(0);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     fn maybe_drop(&self, rock: &mut Rock) -> bool {
-        if rock.bottom_edge >= 1 {
+        if self.is_valid_rock_position(rock, (0, -1)) {
             rock.bottom_edge -= 1;
             return true;
         } else {
@@ -112,65 +129,122 @@ impl Chamber {
         }
     }
 
-    fn print(&self, falling_rock: &Rock) {
-        println!();
+    fn is_valid_rock_position(&self, rock: &Rock, delta: Delta) -> bool {
+        for rock_coord in &rock.coords {
+            let chamber_coord = rock.rock_to_chamber_coords(*rock_coord, delta);
 
-        for y in (-1..=self.height + 7).rev() {
+            if chamber_coord.0 < 0
+                || chamber_coord.0 >= 7
+                || chamber_coord.1 < 0
+                || self.is_chamber_coord_part_of_tower(&chamber_coord)
+            {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    // Rock is consumed here, as it becomes part of the tower
+    fn add_to_tower(&mut self, rock: Rock) {
+        for rock_coord in &rock.coords {
+            let chamber_coord = rock.rock_to_chamber_coords(*rock_coord, (0, 0));
+            self.tower[chamber_coord.1 as usize] |= 1 << chamber_coord.0;
+            self.height = self.height.max(chamber_coord.1 + 1);
+        }
+    }
+
+    fn print(&self, falling_rock: Option<&Rock>) {
+        let top = if let Some(rock) = falling_rock {
+            rock.bottom_edge + rock.height - 1
+        } else {
+            self.height - 1
+        };
+
+        // println!("tower: {:?}", self.tower);
+
+        for y in (-1..=top).rev() {
             match y {
-                -1 => println!("     +-------+"),
+                -1 => println!("   +-------+"),
                 y => {
-                    print!("{:4} |", y);
+                    print!("{:3}|", y);
                     for x in 0..7 {
                         let chamber_coord = (x, y);
-                        if falling_rock.covers(chamber_coord, (0, 0)) {
+                        if self.is_chamber_coord_part_of_tower(&chamber_coord) {
                             print!("#");
                         } else {
-                            print!(".");
+                            if let Some(rock) = falling_rock {
+                                if rock.covers(chamber_coord) {
+                                    print!("@");
+                                } else {
+                                    print!(".");
+                                }
+                            } else {
+                                print!(".");
+                            }
                         }
                     }
                     println!("|");
                 }
             }
         }
+        println!()
     }
 }
 
 pub fn solve() -> (i32, i64) {
     let jets = include_bytes!("../inputs/input17.txt");
-    // let jets = "<<<<".as_bytes();
+    // let jets = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>\n".as_bytes();
     let mut chamber = Chamber::new(jets);
+    const DEBUG1: bool = false;
+    const DEBUG: bool = false;
 
-    let mut rock = chamber.next_rock();
-    println!("Rock begins falling:");
-    chamber.print(&rock);
+    for _ in 0..2022 {
+        let mut rock = chamber.next_rock();
+        if DEBUG1 {
+            println!("A new rock begins falling:");
+            chamber.print(Some(&rock));
+        }
 
-    loop {
-        let jet = chamber.next_jet();
-        println!("Next jet: {:?}", jet);
-        println!("Falling rock: {:?}", rock);
+        loop {
+            let jet = chamber.next_jet();
 
-        chamber.maybe_move_sideways(&mut rock, jet);
+            if chamber.maybe_move_sideways(&mut rock, jet) {
+                if DEBUG {
+                    println!(
+                        "Jet of gas pushes rock {}:",
+                        if jet.dx == 1 { "right" } else { "left" }
+                    );
+                }
+            } else {
+                if DEBUG {
+                    println!(
+                        "Jet of gas pushes rock {}, but nothing happens:",
+                        if jet.dx == 1 { "right" } else { "left" }
+                    )
+                }
+            }
 
-        if chamber.maybe_drop(&mut rock) {
-            println!("Dropped!");
-        } else {
-            println!("Stopped!");
-            chamber.print(&rock);
-            break;
+            if DEBUG {
+                chamber.print(Some(&rock));
+            }
+
+            if chamber.maybe_drop(&mut rock) {
+                if DEBUG {
+                    println!("Rock falls 1 unit:");
+                    chamber.print(Some(&rock));
+                }
+            } else {
+                chamber.add_to_tower(rock);
+                if DEBUG {
+                    println!("Rock falls 1 unit, causing it to come to rest:");
+                    chamber.print(None);
+                }
+                break;
+            }
         }
     }
+
+    println!("Height: {}", chamber.height);
     (0, 0)
-}
-
-#[cfg(test)]
-mod tests {
-    // use super::*;
-    #[test]
-    fn move_rock() {
-        // let mut rock = Rock::new(vec![0b00111, 0b00100], 3, 2);
-        // let expected = Rock::new(vec![0b000111, 0b000100], 3, 2);
-
-        // rock.move_rock(1);
-        // assert_eq!(expected, rock);
-    }
 }
