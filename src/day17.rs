@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
-type ChamberCoord = (i64, i64);
-type RockCoord = (i64, i64);
-type Delta = (i64, i64);
+type ChamberCoord = (i32, i32);
+type RockCoord = (i32, i32);
+type Delta = (i32, i32);
 
 #[derive(Copy, Clone, Debug)]
 struct Jet {
-    index: u64,
-    dx: i64,
+    index: usize,
+    dx: i32,
 }
 
 impl Jet {
-    fn new(index: u64, c: char) -> Self {
+    fn new(index: usize, c: char) -> Self {
         match c {
             '>' => Jet { index, dx: 1 },
             '<' => Jet { index, dx: -1 },
@@ -23,20 +23,19 @@ impl Jet {
 #[derive(Debug)]
 struct Rock {
     coords: Vec<RockCoord>,
-    left_edge: i64,
-    bottom_edge: i64,
-    width: i64,
-    //    height: i64,
+    left_edge: i32,
+    bottom_edge: i32,
+    width: i32,
 }
 
 impl Rock {
-    fn new(shape: usize, bottom_edge: i64) -> Self {
-        let (coords, width, height) = match shape {
-            0 => (vec![(0, 0), (1, 0), (2, 0), (3, 0)], 4, 1),
-            1 => (vec![(1, 2), (0, 1), (1, 1), (2, 1), (1, 0)], 3, 3),
-            2 => (vec![(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)], 3, 3),
-            3 => (vec![(0, 0), (0, 1), (0, 2), (0, 3)], 1, 4),
-            4 => (vec![(0, 0), (0, 1), (1, 0), (1, 1)], 2, 2),
+    fn new(shape: usize, bottom_edge: i32) -> Self {
+        let (coords, width) = match shape {
+            0 => (vec![(0, 0), (1, 0), (2, 0), (3, 0)], 4),
+            1 => (vec![(1, 2), (0, 1), (1, 1), (2, 1), (1, 0)], 3),
+            2 => (vec![(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)], 3),
+            3 => (vec![(0, 0), (0, 1), (0, 2), (0, 3)], 1),
+            4 => (vec![(0, 0), (0, 1), (1, 0), (1, 1)], 2),
             _ => panic!(),
         };
 
@@ -45,13 +44,8 @@ impl Rock {
             left_edge: 2,
             bottom_edge,
             width,
-            //       height,
         }
     }
-
-    // fn chamber_to_rock_coords(&self, coord: ChamberCoord) -> RockCoord {
-    //     (coord.0 - self.left_edge, coord.1 - self.bottom_edge)
-    // }
 
     fn rock_to_chamber_coords(&self, coord: RockCoord, delta: Delta) -> ChamberCoord {
         (
@@ -59,23 +53,13 @@ impl Rock {
             coord.1 + self.bottom_edge + delta.1,
         )
     }
-
-    // // If applying a given delta, does this rock cover the specified
-    // // chamber coordinates?
-    // fn covers(&self, chamber_coord: ChamberCoord) -> bool {
-    //     let transformed_chamber_coord: RockCoord = self.chamber_to_rock_coords(chamber_coord);
-    //     self.coords
-    //         .iter()
-    //         .any(|rock_coord| *rock_coord == transformed_chamber_coord)
-    // }
 }
 
 struct Chamber {
     jets: Vec<u8>,
     jet_index: usize,
     shape_index: usize,
-    height: u64,
-    // num_dropped_rocks: i32,
+    height: i32,
     tower: Vec<u8>,
 }
 
@@ -86,7 +70,6 @@ impl Chamber {
             jet_index: 0,
             shape_index: 0,
             height: 0,
-            // num_dropped_rocks: 0,
             tower: vec![0; 16 * 1024],
         }
     }
@@ -108,14 +91,14 @@ impl Chamber {
         }
 
         self.jet_index += 1;
-        return Jet::new(index as u64, c as char);
+        return Jet::new(index, c as char);
     }
 
     fn next_rock(&mut self) -> Rock {
         const NUM_SHAPES: usize = 5;
         let next_shape = self.shape_index % NUM_SHAPES;
         self.shape_index += 1;
-        Rock::new(next_shape, (self.height + 3) as i64)
+        Rock::new(next_shape, self.height + 3)
     }
 
     fn maybe_move_sideways(&self, rock: &mut Rock, jet: Jet) -> bool {
@@ -157,46 +140,9 @@ impl Chamber {
         for rock_coord in &rock.coords {
             let chamber_coord = rock.rock_to_chamber_coords(*rock_coord, (0, 0));
             self.tower[chamber_coord.1 as usize] |= 1 << chamber_coord.0;
-            self.height = self.height.max((chamber_coord.1 + 1) as u64);
+            self.height = self.height.max(chamber_coord.1 + 1);
         }
     }
-
-    // fn print(&self, falling_rock: Option<&Rock>) {
-    //     let top = if let Some(rock) = falling_rock {
-    //         rock.bottom_edge + rock.height - 1
-    //     } else {
-    //         (self.height - 1) as i64
-    //     };
-
-    //     // println!("tower: {:?}", self.tower);
-
-    //     for y in (-1..=top).rev() {
-    //         match y {
-    //             -1 => println!("   +-------+"),
-    //             y => {
-    //                 print!("{:3}|", y);
-    //                 for x in 0..7 {
-    //                     let chamber_coord = (x, y);
-    //                     if self.is_chamber_coord_part_of_tower(&chamber_coord) {
-    //                         print!("#");
-    //                     } else {
-    //                         if let Some(rock) = falling_rock {
-    //                             if rock.covers(chamber_coord) {
-    //                                 print!("@");
-    //                             } else {
-    //                                 print!(".");
-    //                             }
-    //                         } else {
-    //                             print!(".");
-    //                         }
-    //                     }
-    //                 }
-    //                 println!("|");
-    //             }
-    //         }
-    //     }
-    //     println!()
-    // }
 }
 
 struct CycleTracker {
@@ -211,10 +157,14 @@ impl CycleTracker {
     }
 
     fn add_state(&mut self, jet: &Jet, chamber: &Chamber, rock_num: u64) -> Option<(u64, i32)> {
-        let mut state: Vec<i32> = Vec::new();
+        const NUM_ROWS: usize = 15;
+        let mut state: Vec<i32> = vec![0; NUM_ROWS];
         state.push(jet.index as i32);
-        for i in 1..20 {
-            let y = chamber.height as i64 - i;
+
+        // Save the 15 top rows of the tower. This turns out to be the fewest
+        // rows that we can save to correctly detect cycles.
+        for i in 1..NUM_ROWS {
+            let y = chamber.height as i64 - i as i64;
             if y < 0 {
                 break;
             }
@@ -230,26 +180,28 @@ impl CycleTracker {
     }
 }
 
-pub fn solve() -> (u64, u64) {
+pub fn solve() -> (i32, u64) {
     let jets = include_bytes!("../inputs/input17.txt");
     let mut chamber = Chamber::new(jets);
     let mut cycle_tracker = CycleTracker::new();
 
-    let mut p1: u64 = 0;
-    let mut p2: u64 = 0;
+    // For p1, we just drop 2022 rocks
+    let mut p1: i32 = 0;
     let p1_limit = 2022;
+
+    // For p2, we drop 1 trillion rocks. We keep trace of cycles
+    // so that we do not need to actually drop the rocks which are part of
+    // (full) cycles.
     let mut track_cycles = true;
     let mut p2_limit: u64 = 1_000_000_000_000;
     let mut height_of_all_cycles: u64 = 0;
 
-    'outer: for rock_num in 0.. {
+    for rock_num in 0.. {
         if rock_num == p1_limit {
             p1 = chamber.height;
-        }
-
-        if rock_num == p2_limit {
-            p2 = chamber.height as u64 + height_of_all_cycles;
-            break 'outer;
+        } else if rock_num == p2_limit {
+            let p2 = chamber.height as u64 + height_of_all_cycles;
+            return (p1, p2);
         }
 
         let mut rock = chamber.next_rock();
@@ -266,21 +218,13 @@ pub fn solve() -> (u64, u64) {
                     break 'inner;
                 }
 
-                if let Some((start, height)) =
-                    cycle_tracker.add_state(&jet, &chamber, rock_num as u64)
-                {
-                    let rock_num_at_cycle_start = start as u64;
-                    let height_at_cycle_start = height as u64;
-                    let cycle_height = chamber.height as u64 - height_at_cycle_start;
-                    let rocks_per_cycle = rock_num as u64 - rock_num_at_cycle_start;
-                    let p2_num_rocks_to_drop: u64 = 1_000_000_000_000;
-                    let num_cycles = (p2_num_rocks_to_drop - rock_num_at_cycle_start)
-                        .div_floor(rocks_per_cycle)
-                        - 1;
-                    let rocks_part_of_cycles = num_cycles * rocks_per_cycle;
-                    height_of_all_cycles = cycle_height * num_cycles;
+                if let Some((start, height)) = cycle_tracker.add_state(&jet, &chamber, rock_num) {
+                    let cycle_height: u64 = (chamber.height - height) as u64;
+                    let rocks_per_cycle = rock_num as u64 - start;
+                    let num_cycles = (p2_limit - start).div_floor(rocks_per_cycle) - 1;
 
-                    p2_limit -= rocks_part_of_cycles;
+                    height_of_all_cycles = cycle_height * num_cycles;
+                    p2_limit -= num_cycles * rocks_per_cycle;
                     track_cycles = false;
                 }
 
@@ -288,6 +232,5 @@ pub fn solve() -> (u64, u64) {
             }
         }
     }
-
-    (p1, p2)
+    panic!();
 }
