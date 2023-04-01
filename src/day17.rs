@@ -75,8 +75,6 @@ impl Chamber {
     }
 
     fn is_chamber_coord_part_of_tower(&self, chamber_coord: &ChamberCoord) -> bool {
-        assert!((0..7).contains(&chamber_coord.0));
-        assert!(chamber_coord.1 >= 0);
         self.tower[chamber_coord.1 as usize] & (1 << chamber_coord.0) != 0
     }
 
@@ -146,7 +144,7 @@ impl Chamber {
 }
 
 struct CycleTracker {
-    states: HashMap<Vec<i32>, (u64, i32)>,
+    states: HashMap<(i32, Vec<u8>), (u64, i32)>,
 }
 
 impl CycleTracker {
@@ -157,19 +155,21 @@ impl CycleTracker {
     }
 
     fn add_state(&mut self, jet: &Jet, chamber: &Chamber, rock_num: u64) -> Option<(u64, i32)> {
-        const NUM_ROWS: usize = 15;
-        let mut state: Vec<i32> = vec![0; NUM_ROWS];
-        state.push(jet.index as i32);
-
         // Save the 15 top rows of the tower. This turns out to be the fewest
         // rows that we can save to correctly detect cycles.
+        const NUM_ROWS: usize = 15;
+
+        let mut top_rows: Vec<u8> = vec![0; NUM_ROWS];
+
         for i in 1..NUM_ROWS {
             let y = chamber.height as i64 - i as i64;
             if y < 0 {
                 break;
             }
-            state.push(chamber.tower[y as usize] as i32);
+            top_rows.push(chamber.tower[y as usize]);
         }
+
+        let state = (jet.index as i32, top_rows);
 
         if let Some((rock_num, height)) = self.states.get(&state) {
             return Some((*rock_num, *height));

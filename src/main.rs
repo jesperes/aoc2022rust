@@ -39,8 +39,8 @@ fn run_puzzles(puzzles: Vec<Puzzle>) {
             continue;
         }
 
-        const MAX_REPS: usize = 1;
-        const MAX_SECS: u64 = 1;
+        const MAX_REPS: usize = 1000;
+        const MAX_SECS: u64 = 5;
         let mut runtimes: Vec<Duration> = vec![];
         let start = std::time::Instant::now();
 
