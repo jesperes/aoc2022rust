@@ -19,6 +19,8 @@ mod day14;
 mod day15;
 mod day16;
 mod day17;
+mod day19;
+
 struct Puzzle {
     name: String,
     fun: fn(),
@@ -35,11 +37,11 @@ impl Puzzle {
 
 fn run_puzzles(puzzles: Vec<Puzzle>) {
     for p in puzzles {
-        if p.name != "17" {
+        if p.name != "19" {
             continue;
         }
 
-        const MAX_REPS: usize = 1000;
+        const MAX_REPS: usize = 1;
         const MAX_SECS: u64 = 5;
         let mut runtimes: Vec<Duration> = vec![];
         let start = std::time::Instant::now();
@@ -101,5 +103,6 @@ fn main() {
         Puzzle::make(15, || assert_eq!((4665948, 13543690671045), day15::solve())),
         Puzzle::make(16, || assert_eq!((1376, 1933), day16::solve())),
         Puzzle::make(17, || assert_eq!((3153, 1553665689155), day17::solve())),
+        Puzzle::make(19, || assert_eq!((0, 0), day19::solve())),
     ]);
 }
