@@ -41,9 +41,7 @@ fn str_to_mask(s: &str) -> Mask {
 }
 
 fn mask_to_prio(mask: Mask) -> Prio {
-    let l2 = (mask as f32).log2();
-    // assert_eq!(l2, l2.trunc());
-    l2.trunc() as Prio
+    (mask as f32).log2() as Prio
 }
 
 fn prio(item: char) -> u8 {

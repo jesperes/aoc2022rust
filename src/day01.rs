@@ -7,11 +7,11 @@ pub fn solve() -> (i32, i32) {
     let mut c: i32 = 0;
 
     for group in s.split("\n\n") {
-        let sum = group
+        let sum: i32 = group
+            .trim()
             .split("\n")
-            .filter(|s| !s.is_empty())
             .map(|s| s.parse::<i32>().unwrap())
-            .sum::<i32>();
+            .sum();
 
         if sum > a {
             c = b;

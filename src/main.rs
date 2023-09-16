@@ -1,5 +1,7 @@
 #![feature(test, int_roundings)]
 
+use clap::Parser;
+use regex::Regex;
 use std::time::Duration;
 
 mod day01;
@@ -19,7 +21,13 @@ mod day14;
 mod day15;
 mod day16;
 mod day17;
-mod day19;
+mod day18;
+// mod day19;
+
+#[derive(Parser)]
+struct Cli {
+    puzzles: Vec<String>,
+}
 
 struct Puzzle {
     name: String,
@@ -37,11 +45,7 @@ impl Puzzle {
 
 fn run_puzzles(puzzles: Vec<Puzzle>) {
     for p in puzzles {
-        if p.name != "19" {
-            continue;
-        }
-
-        const MAX_REPS: usize = 1;
+        const MAX_REPS: usize = 1000;
         const MAX_SECS: u64 = 5;
         let mut runtimes: Vec<Duration> = vec![];
         let start = std::time::Instant::now();
@@ -57,10 +61,11 @@ fn run_puzzles(puzzles: Vec<Puzzle>) {
 
         let avg_runtime = runtimes.iter().sum::<Duration>() / runtimes.len() as u32;
         println!(
-            "Day {}: {:10} μs {:10} ns",
+            "Day {}: {:10} μs {:10} ns ({} reps)",
             p.name,
             avg_runtime.as_micros(),
-            avg_runtime.as_nanos()
+            avg_runtime.as_nanos(),
+            runtimes.len()
         );
     }
 }
@@ -84,8 +89,20 @@ fn day10_sol() -> (i64, String) {
     )
 }
 
+fn matches(cli: &Cli, name: &String) -> bool {
+    for p in &cli.puzzles {
+        if let Ok(re) = Regex::new(name) {
+            if re.is_match(p) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn main() {
-    run_puzzles(vec![
+    let args = Cli::parse();
+    let all_puzzles = vec![
         Puzzle::make(1, || assert_eq!((69836, 207968), day01::solve())),
         Puzzle::make(2, || assert_eq!((14297, 10498), day02::solve())),
         Puzzle::make(3, || assert_eq!((8349, 2681), day03::solve())),
@@ -103,6 +120,27 @@ fn main() {
         Puzzle::make(15, || assert_eq!((4665948, 13543690671045), day15::solve())),
         Puzzle::make(16, || assert_eq!((1376, 1933), day16::solve())),
         Puzzle::make(17, || assert_eq!((3153, 1553665689155), day17::solve())),
-        Puzzle::make(19, || assert_eq!((0, 0), day19::solve())),
-    ]);
+        Puzzle::make(18, || assert_eq!((3530, 2000), day18::solve())),
+        // Puzzle::make(19, || assert_eq!((0, 0), day19::solve())),
+    ];
+
+    if args.puzzles.len() == 0 {
+        println!("Running all puzzles.");
+        run_puzzles(all_puzzles);
+    } else {
+        // Only run specified puzzles
+        let subset: Vec<Puzzle> = all_puzzles
+            .into_iter()
+            .filter(|p| matches(&args, &p.name))
+            .collect();
+
+        if subset.len() == 0 {
+            println!(
+                "Puzzles specified do not match any implementations: {:?}",
+                args.puzzles
+            );
+        } else {
+            run_puzzles(subset);
+        }
+    }
 }
