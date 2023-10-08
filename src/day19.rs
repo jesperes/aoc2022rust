@@ -1,3 +1,5 @@
+use fnv::FnvHashMap; // faster hashmap
+
 use lazy_regex::regex_captures;
 
 #[derive(Debug)]
@@ -9,19 +11,14 @@ struct Blueprint {
     obsidian_robot_clay_cost: i32,
     geode_robot_ore_cost: i32,
     geode_robot_obsidian_cost: i32,
+
+    max_ore_r: i32,
+    max_clay_r: i32,
+    max_obsidian_r: i32,
 }
 
-pub fn solve() -> (i32, i32) {
-    // let input_bytes = include_bytes!("../inputs/input18.txt");
-    let input_bytes = "Blueprint 1: \
-                       Each ore robot costs 4 ore. \
-                       Each clay robot costs 2 ore. \
-                       Each obsidian robot costs 3 ore and 14 clay. \
-                       Each geode robot costs 2 ore and 7 obsidian."
-        .as_bytes();
-    let mut blueprints = Vec::new();
-
-    for line in String::from_utf8_lossy(input_bytes).trim().split("\n") {
+impl Blueprint {
+    fn from_str(text: &str) -> Self {
         let (
             _,
             nr,
@@ -36,159 +33,208 @@ pub fn solve() -> (i32, i32) {
             Each clay robot costs (\\d+) ore. \
             Each obsidian robot costs (\\d+) ore and (\\d+) clay. \
             Each geode robot costs (\\d+) ore and (\\d+) obsidian.",
-            line
+            text
         )
         .unwrap();
 
-        blueprints.push(Blueprint {
-            nr: nr.parse().unwrap(),
-            ore_robot_ore_cost: ore_robot_ore_cost.parse().unwrap(),
-            clay_robot_ore_cost: clay_robot_ore_cost.parse().unwrap(),
-            obsidian_robot_ore_cost: obsidian_robot_ore_cost.parse().unwrap(),
-            obsidian_robot_clay_cost: obsidian_robot_clay_cost.parse().unwrap(),
-            geode_robot_ore_cost: geode_robot_ore_cost.parse().unwrap(),
-            geode_robot_obsidian_cost: geode_robot_obsidian_cost.parse().unwrap(),
-        });
+        let nr = nr.parse().unwrap();
+        let ore_robot_ore_cost = ore_robot_ore_cost.parse().unwrap();
+        let clay_robot_ore_cost = clay_robot_ore_cost.parse().unwrap();
+        let obsidian_robot_ore_cost = obsidian_robot_ore_cost.parse().unwrap();
+        let obsidian_robot_clay_cost = obsidian_robot_clay_cost.parse().unwrap();
+        let geode_robot_ore_cost = geode_robot_ore_cost.parse().unwrap();
+        let geode_robot_obsidian_cost = geode_robot_obsidian_cost.parse().unwrap();
+
+        Blueprint {
+            nr,
+            ore_robot_ore_cost,
+            clay_robot_ore_cost,
+            obsidian_robot_ore_cost,
+            obsidian_robot_clay_cost,
+            geode_robot_ore_cost,
+            geode_robot_obsidian_cost,
+
+            max_ore_r: clay_robot_ore_cost
+                .max(obsidian_robot_ore_cost)
+                .max(geode_robot_ore_cost),
+            max_clay_r: obsidian_robot_clay_cost,
+            max_obsidian_r: geode_robot_obsidian_cost,
+        }
+    }
+}
+
+fn parse_blueprints(text: &[u8]) -> Vec<Blueprint> {
+    String::from_utf8_lossy(text)
+        .trim()
+        .split("\n")
+        .map(|line| Blueprint::from_str(line))
+        .collect()
+}
+
+type CacheKey = (i32, i32, i32, i32, i32, i32, i32, i32, i32);
+
+fn search2(
+    bp: &Blueprint,
+    cache: &mut FnvHashMap<CacheKey, i32>,
+    minutes_left: i32,
+    // Resource amounts
+    ore: i32,
+    clay: i32,
+    obs: i32,
+    geo: i32,
+    // Number of robots
+    ore_r: i32,
+    clay_r: i32,
+    obs_r: i32,
+    geo_r: i32,
+) -> i32 {
+    if minutes_left == 0 {
+        return geo;
     }
 
-    for bp in &blueprints {
-        let mut num_ore_robots = 1;
-        let mut num_clay_robots = 0;
-        let mut num_obsidian_robots = 0;
-        let mut num_geode_robots = 0;
-        let mut amount_of_ore = 0;
-        let mut amount_of_clay = 0;
-        let mut amount_of_obsidian = 0;
-        let mut amount_of_geodes = 0;
+    let mut max_geodes: i32 = 0;
+    let key = (
+        minutes_left,
+        ore,
+        clay,
+        obs,
+        geo,
+        ore_r,
+        clay_r,
+        obs_r,
+        geo_r,
+    );
 
-        let max_ore = bp
-            .clay_robot_ore_cost
-            .max(bp.obsidian_robot_ore_cost)
-            .max(bp.geode_robot_ore_cost);
+    if let Some(cached_value) = cache.get(&key) {
+        return *cached_value;
+    }
 
-        let max_clay = bp.obsidian_robot_clay_cost;
-
-        let max_obsidian = bp.geode_robot_obsidian_cost;
-
-        /*
-           Simple heuristic:
-           - Build a geode-, obsidian-, clay-, or ore-robot, in that order.
-           - Do not build more robots than any robot costs, so if no robot
-             costs more than 4 ore do not build more that 4 ore robots.
-
-           TODO: rewrite this to a depth-first search, exploring all possible
-           (valid) choices.
-        */
-        for minute in 1..=24 {
-            println!("\n== Minute {minute} ==");
-            let mut ore_robot_is_building = false;
-            let mut clay_robot_is_building = false;
-            let mut obsidian_robot_is_building = false;
-            let mut geode_robot_is_building = false;
-
-            // Build robots
-
-            if amount_of_obsidian >= bp.geode_robot_obsidian_cost
-                && amount_of_ore >= bp.geode_robot_ore_cost
-            {
-                geode_robot_is_building = true;
-                amount_of_obsidian -= bp.geode_robot_obsidian_cost;
-                amount_of_ore -= bp.geode_robot_ore_cost;
-                println!(
-                    "Spend {} obsidian and {} ore to start building a geode-cracking robot.",
-                    bp.geode_robot_obsidian_cost, bp.geode_robot_ore_cost
-                );
-            }
-
-            if amount_of_clay >= bp.obsidian_robot_clay_cost
-                && amount_of_ore >= bp.obsidian_robot_ore_cost
-                && amount_of_obsidian < max_obsidian
-            {
-                obsidian_robot_is_building = true;
-                amount_of_clay -= bp.obsidian_robot_clay_cost;
-                amount_of_ore -= bp.obsidian_robot_ore_cost;
-                println!(
-                    "Spend {} clay and {} obsidian to start building a obsidian-collecting robot.",
-                    bp.obsidian_robot_clay_cost, bp.obsidian_robot_ore_cost
-                );
-            }
-
-            if amount_of_ore >= bp.clay_robot_ore_cost && amount_of_clay < max_clay {
-                clay_robot_is_building = true;
-                amount_of_ore -= bp.clay_robot_ore_cost;
-                println!(
-                    "Spend {} ore to start building a clay-collecting robot.",
-                    bp.clay_robot_ore_cost
-                );
-            }
-
-            if amount_of_ore >= bp.ore_robot_ore_cost && amount_of_ore < max_ore {
-                ore_robot_is_building = true;
-                amount_of_ore -= bp.ore_robot_ore_cost;
-                println!(
-                    "Spend {} ore to start building a ore-collecting robot.",
-                    bp.ore_robot_ore_cost
-                );
-            }
-
-            // Collect ore from existing robots (but not from the ones which are building)
-
-            amount_of_ore += num_ore_robots;
-            if num_ore_robots >= 1 {
-                println!("{num_ore_robots} ore-collecting robot(s) collects {num_ore_robots} ore; you now have {amount_of_ore} ore.");
-            }
-
-            amount_of_clay += num_clay_robots;
-            if num_clay_robots >= 1 {
-                println!("{num_clay_robots} clay-collecting robot(s) collects {num_clay_robots} clay; you now have {amount_of_clay} clay.");
-            }
-
-            amount_of_obsidian += num_obsidian_robots;
-            if num_obsidian_robots >= 1 {
-                println!("{num_obsidian_robots} obsidian-collecting robot(s) collects {num_obsidian_robots} obsidian; you now have {amount_of_obsidian} obsidian.");
-            }
-
-            amount_of_geodes += num_geode_robots;
-            if num_geode_robots >= 1 {
-                println!("{num_geode_robots} geode-cracking robot(s) cracks {num_geode_robots} geode; you now have {amount_of_geodes} of them.");
-            }
-
-            // Robots have finished building
-
-            if geode_robot_is_building {
-                num_geode_robots += 1;
-                println!(
-                    "The new geode-collecting robot is ready; you now have {num_geode_robots} of them"
-                );
-            }
-
-            if obsidian_robot_is_building {
-                num_obsidian_robots += 1;
-                println!(
-                    "The new obsidian-collecting robot is ready; you now have {num_obsidian_robots} of them"
-                );
-            }
-
-            if clay_robot_is_building {
-                num_clay_robots += 1;
-                println!(
-                    "The new clay-collecting robot is ready; you now have {num_clay_robots} of them"
-                );
-            }
-
-            if ore_robot_is_building {
-                num_ore_robots += 1;
-                println!(
-                    "The new ore-collecting robot is ready; you now have {num_ore_robots} of them"
-                );
-            }
-        }
-
-        println!(
-            "Blueprint {} gave {} geodes in 24 minutes",
-            bp.nr, amount_of_geodes,
+    // Always build a geode robot, if possible, and do not investigate other branches
+    if obs >= bp.geode_robot_obsidian_cost && ore >= bp.geode_robot_ore_cost {
+        return search2(
+            bp,
+            cache,
+            minutes_left - 1,
+            ore - bp.geode_robot_ore_cost + ore_r,
+            clay + clay_r,
+            obs - bp.geode_robot_obsidian_cost + obs_r,
+            geo + geo_r,
+            ore_r,
+            clay_r,
+            obs_r,
+            geo_r + 1,
         );
     }
 
-    (0, 0)
+    // Maybe build obsidian robot
+    if ore >= bp.obsidian_robot_ore_cost
+        && clay >= bp.obsidian_robot_clay_cost
+        && obs_r < bp.max_obsidian_r
+    {
+        let geodes = search2(
+            bp,
+            cache,
+            minutes_left - 1,
+            ore - bp.obsidian_robot_ore_cost + ore_r,
+            clay - bp.obsidian_robot_clay_cost + clay_r,
+            obs + obs_r,
+            geo + geo_r,
+            ore_r,
+            clay_r,
+            obs_r + 1,
+            geo_r,
+        );
+
+        if geodes > max_geodes {
+            max_geodes = geodes;
+        }
+    }
+
+    // Maybe build clay robot
+    if ore >= bp.clay_robot_ore_cost && clay_r < bp.max_clay_r {
+        let geodes = search2(
+            bp,
+            cache,
+            minutes_left - 1,
+            ore - bp.clay_robot_ore_cost + ore_r,
+            clay + clay_r,
+            obs + obs_r,
+            geo + geo_r,
+            ore_r,
+            clay_r + 1,
+            obs_r,
+            geo_r,
+        );
+
+        if geodes > max_geodes {
+            max_geodes = geodes;
+        }
+    }
+
+    // Maybe build ore robot
+    if ore >= bp.ore_robot_ore_cost && ore_r < bp.max_ore_r {
+        let geodes = search2(
+            bp,
+            cache,
+            minutes_left - 1,
+            ore - bp.ore_robot_ore_cost + ore_r,
+            clay + clay_r,
+            obs + obs_r,
+            geo + geo_r,
+            ore_r + 1,
+            clay_r,
+            obs_r,
+            geo_r,
+        );
+
+        if geodes > max_geodes {
+            max_geodes = geodes;
+        }
+    }
+
+    // Don't build anything, just let existing robots produce more resources
+    let geodes = search2(
+        bp,
+        cache,
+        minutes_left - 1,
+        ore + ore_r,
+        clay + clay_r,
+        obs + obs_r,
+        geo + geo_r,
+        ore_r,
+        clay_r,
+        obs_r,
+        geo_r,
+    );
+
+    if geodes > max_geodes {
+        max_geodes = geodes;
+    }
+
+    cache.insert(key, max_geodes);
+    return max_geodes;
+}
+
+fn search(bp: &Blueprint, minutes_left: i32) -> i32 {
+    let mut cache: FnvHashMap<CacheKey, i32> = FnvHashMap::default();
+    return search2(&bp, &mut cache, minutes_left, 0, 0, 0, 0, 1, 0, 0, 0);
+}
+
+pub fn solve() -> (i32, i32) {
+    let input_bytes = include_bytes!("../inputs/input19.txt");
+    let blueprints = parse_blueprints(input_bytes);
+
+    let mut p1 = 0;
+    for bp in &blueprints {
+        let geodes = search(&bp, 24);
+        p1 += geodes * bp.nr;
+    }
+
+    let mut p2 = 1;
+    for bp in &blueprints[0..3] {
+        let geodes = search(&bp, 32);
+        p2 *= geodes;
+    }
+
+    (p1, p2)
 }

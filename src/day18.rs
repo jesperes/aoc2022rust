@@ -49,7 +49,7 @@ fn fill(coords: &Vec<Cube>) -> i32 {
     area
 }
 
-pub fn solve() -> (i32, i32) {
+pub fn solve() -> (usize, i32) {
     let bytes = include_bytes!("../inputs/input18.txt");
     let s = String::from_utf8_lossy(bytes);
 
@@ -65,7 +65,7 @@ pub fn solve() -> (i32, i32) {
         })
         .collect();
 
-    let mut total_surface_area: i32 = (coords.len() * 6) as i32;
+    let mut total_surface_area = coords.len() * 6;
 
     for c1 in &coords {
         for c2 in &coords {
