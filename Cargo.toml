@@ -14,3 +14,4 @@ fnv = "1.0.7"
 quote = "1.0.25"
 clap = { version = "4.*", features = ["derive"] }
 queues = "1.0.2"
+rayon = "1.8.0"

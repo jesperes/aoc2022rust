@@ -1,4 +1,5 @@
-use fnv::FnvHashMap; // faster hashmap
+use fnv::FnvHashMap;
+use rayon::prelude::*;
 
 use lazy_regex::regex_captures;
 
@@ -126,6 +127,14 @@ fn search2(
         );
     }
 
+    // Optimization 1. This is the last robot we can build, so if we couldn't
+    // build a geode robot, there is really no point in building anything else,
+    // but remember to let the geode robots we have build the last round of
+    // robots. (This optimization took the total runtime from 49s to 36s.)
+    if minutes_left == 1 {
+        return geo + geo_r;
+    }
+
     // Maybe build obsidian robot
     if ore >= bp.obsidian_robot_ore_cost
         && clay >= bp.obsidian_robot_clay_cost
@@ -224,17 +233,17 @@ pub fn solve() -> (i32, i32) {
     let input_bytes = include_bytes!("../inputs/input19.txt");
     let blueprints = parse_blueprints(input_bytes);
 
-    let mut p1 = 0;
-    for bp in &blueprints {
-        let geodes = search(&bp, 24);
-        p1 += geodes * bp.nr;
-    }
+    // Optimization 2: parallelization brought the runtime from 36s to 20s.
 
-    let mut p2 = 1;
-    for bp in &blueprints[0..3] {
-        let geodes = search(&bp, 32);
-        p2 *= geodes;
-    }
+    let p1 = blueprints
+        .par_iter()
+        .map(|bp| search(&bp, 24) * bp.nr)
+        .sum();
+
+    let p2 = blueprints[0..3]
+        .par_iter()
+        .map(|bp| search(&bp, 32))
+        .reduce(|| 1, |a, b| a * b);
 
     (p1, p2)
 }
