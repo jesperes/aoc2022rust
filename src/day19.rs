@@ -159,6 +159,12 @@ fn search2(
         }
     }
 
+    // Optimization: skip if we don't have time to build a obsidian + a geode
+    // robot. (22s -> 17.5s).
+    if minutes_left == 2 {
+        return geo + geo_r * 2;
+    }
+
     // Maybe build clay robot
     if ore >= bp.clay_robot_ore_cost && clay_r < bp.max_clay_r {
         let geodes = search2(
@@ -225,7 +231,7 @@ fn search2(
 }
 
 fn search(bp: &Blueprint, minutes_left: i32) -> i32 {
-    let mut cache: FnvHashMap<CacheKey, i32> = FnvHashMap::default();
+    let mut cache = FnvHashMap::default();
     return search2(&bp, &mut cache, minutes_left, 0, 0, 0, 0, 1, 0, 0, 0);
 }
 
