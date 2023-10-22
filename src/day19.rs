@@ -247,6 +247,7 @@ fn search(bp: &Blueprint, cutoff: i32, minutes_left: i32) -> i32 {
         cutoff,
         State::default(minutes_left),
     );
+
     return n;
 }
 
@@ -254,18 +255,30 @@ pub fn solve() -> (i32, i32) {
     let input_bytes = include_bytes!("../inputs/input19.txt");
     let blueprints = Blueprint::parse_blueprints(input_bytes);
 
-    // Numbers found by trial-and-error... :)
+    // Cutoff numbers found by trial-and-error... :)
     let cutoff_p1 = 2;
-    let p1 = blueprints
-        .par_iter()
-        .map(|bp| search(&bp, cutoff_p1, 24) * bp.nr)
-        .sum();
-
     let cutoff_p2 = 18;
-    let p2 = blueprints[0..3]
-        .par_iter()
-        .map(|bp| search(&bp, cutoff_p2, 32))
-        .reduce(|| 1, |a, b| a * b);
 
-    (p1, p2)
+    // Check all blueprints in parallel, then collect the results
+    blueprints
+        .iter()
+        .map(|bp| (true, cutoff_p1, bp))
+        .chain(
+            blueprints
+                .iter()
+                .filter(|bp| bp.nr <= 3)
+                .map(|bp| (false, cutoff_p2, bp)),
+        )
+        .par_bridge()
+        .into_par_iter()
+        .map(|(part, cutoff, bp)| match part {
+            true => (part, search(&bp, cutoff, 24) * bp.nr),
+            false => (part, search(&bp, cutoff, 32)),
+        })
+        .collect::<Vec<(bool, i32)>>()
+        .iter()
+        .fold((0, 1), |(p1, p2), (part, sol)| match part {
+            true => (p1 + sol, p2),
+            false => (p1, p2 * sol),
+        })
 }
