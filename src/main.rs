@@ -23,6 +23,7 @@ mod day16;
 mod day17;
 mod day18;
 mod day19;
+mod day20;
 
 #[derive(Parser)]
 struct Cli {
@@ -121,11 +122,12 @@ fn main() {
         Puzzle::make(17, || assert_eq!((3153, 1553665689155), day17::solve())),
         Puzzle::make(18, || assert_eq!((3530, 2000), day18::solve())),
         Puzzle::make(19, || assert_eq!((1382, 31740), day19::solve())),
+        Puzzle::make(20, || assert_eq!((7278, 14375678667089), day20::solve())),
     ];
 
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");
-        run_puzzles(all_puzzles, 1000);
+        run_puzzles(all_puzzles, 100);
     } else {
         // Only run specified puzzles
         let subset: Vec<Puzzle> = all_puzzles

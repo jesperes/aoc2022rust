@@ -1,7 +1,5 @@
-use fnv::FnvHashMap;
-use rayon::prelude::*;
-
 use lazy_regex::regex_captures;
+use rayon::prelude::*;
 
 #[derive(Debug)]
 struct Blueprint {
@@ -18,34 +16,9 @@ struct Blueprint {
     max_obs_r: i32,
 }
 
-#[derive(Eq, Hash, PartialEq)]
-struct State {
-    min: i32,
-    ore: i32,
-    clay: i32,
-    obs: i32,
-    geo: i32,
-    ore_r: i32,
-    clay_r: i32,
-    obs_r: i32,
-    geo_r: i32,
-}
-
-impl State {
-    fn default(min: i32) -> State {
-        State {
-            min,
-            ore: 0,
-            clay: 0,
-            obs: 0,
-            geo: 0,
-            ore_r: 1,
-            clay_r: 0,
-            obs_r: 0,
-            geo_r: 0,
-        }
-    }
-}
+const SKIP_ORE: i32 = 0b001;
+const SKIP_CLAY: i32 = 0b010;
+const SKIP_OBS: i32 = 0b100;
 
 impl Blueprint {
     fn from_str(text: &str) -> Self {
@@ -87,8 +60,8 @@ impl Blueprint {
             max_ore_r: clay_robot_ore_c.max(obs_robot_ore_c).max(geo_robot_ore_c),
             // It turns out that we can lower the max_clay_r and max_obs_r a
             // little bit without actually losing any optimal solutions.
-            max_clay_r: obs_robot_clay_c - 2,
-            max_obs_r: geo_robot_obs_c - 1,
+            max_clay_r: obs_robot_clay_c,
+            max_obs_r: geo_robot_obs_c,
         }
     }
 
@@ -101,179 +74,182 @@ impl Blueprint {
     }
 }
 
-fn search2(
+fn dfs(
     bp: &Blueprint,
-    cache: &mut FnvHashMap<State, i32>,
-    num_states: &mut i32,
-    cutoff: i32,
-    state: State,
+    global_max: &mut i32,
+    skip_list: i32,
+    min: i32,
+    o: i32,
+    c: i32,
+    b: i32,
+    g: i32,
+    or: i32,
+    cr: i32,
+    br: i32,
+    gr: i32,
 ) -> i32 {
-    *num_states += 1;
+    let ooc = bp.ore_robot_ore_c;
+    let coc = bp.clay_robot_ore_c;
+    let boc = bp.obs_robot_ore_c;
+    let bcc = bp.obs_robot_clay_c;
+    let goc = bp.geo_robot_ore_c;
+    let gbc = bp.geo_robot_obs_c;
 
-    if state.min == 0 {
-        return state.geo;
-    }
+    let can_build_obs = c >= bcc && o >= boc && or < bp.max_obs_r;
+    let can_build_clay = o >= coc && cr < bp.max_clay_r;
+    let can_build_ore = o >= ooc && or < bp.max_ore_r;
+    let can_build_geo = b >= gbc && o >= goc;
 
-    // If we haven't reached the max robot limits by the cutuff time, there is
-    // no point in proceeding. The cutoff time has been determined through
-    // observation. :)
-    if state.min < cutoff
-        && state.obs_r < bp.max_obs_r
-        && state.clay_r < bp.max_clay_r
-        && state.ore_r < bp.max_ore_r
-    {
-        return 0;
-    }
+    let theoretical_max_geo = g + gr * min + (min * (min - 1)) << 1;
 
-    let mut max_geodes: i32 = 0;
-
-    if let Some(cached_value) = cache.get(&state) {
-        return *cached_value;
-    }
-
-    // Default inventory for the next minute
-    let next_state = State {
-        min: state.min - 1,
-        ore: state.ore + state.ore_r,
-        clay: state.clay + state.clay_r,
-        obs: state.obs + state.obs_r,
-        geo: state.geo + state.geo_r,
-        ..state
-    };
-
-    // Always build a geode robot, if possible, and do not investigate other branches
-    if state.obs >= bp.geo_robot_obs_c && state.ore >= bp.geo_robot_ore_c {
-        return search2(
+    if min == 1 {
+        g + gr
+    } else if theoretical_max_geo < *global_max {
+        0
+    } else if can_build_geo {
+        dfs(
             bp,
-            cache,
-            num_states,
-            cutoff,
-            State {
-                ore: next_state.ore - bp.geo_robot_ore_c,
-                obs: next_state.obs - bp.geo_robot_obs_c,
-                geo_r: state.geo_r + 1,
-                ..next_state
-            },
-        );
-    }
+            global_max,
+            0,
+            min - 1,
+            o + or - goc,
+            c + cr,
+            b + br - gbc,
+            g + gr,
+            or,
+            cr,
+            br,
+            gr + 1,
+        )
+    } else {
+        let mut maxlist = vec![];
+        let skip_obs = (skip_list & SKIP_OBS) != 0;
+        let skip_clay = (skip_list & SKIP_CLAY) != 0;
+        let skip_ore = (skip_list & SKIP_ORE) != 0;
 
-    if state.min == 1 {
-        return state.geo + state.geo_r;
-    }
-
-    // Maybe build obsidian robot
-    if state.ore >= bp.obs_robot_ore_c
-        && state.clay >= bp.obs_robot_clay_c
-        && state.obs_r < bp.max_obs_r
-    {
-        let geodes = search2(
-            bp,
-            cache,
-            num_states,
-            cutoff,
-            State {
-                ore: next_state.ore - bp.obs_robot_ore_c,
-                clay: next_state.clay - bp.obs_robot_clay_c,
-                obs_r: next_state.obs_r + 1,
-                ..next_state
-            },
-        );
-
-        if geodes > max_geodes {
-            max_geodes = geodes;
+        if can_build_obs && !skip_obs {
+            maxlist.push(dfs(
+                bp,
+                global_max,
+                0,
+                min - 1,
+                o + or - boc,
+                c + cr - bcc,
+                b + br,
+                g + gr,
+                or,
+                cr,
+                br + 1,
+                gr,
+            ))
         }
-    }
 
-    if state.min == 2 {
-        return state.geo + state.geo_r * 2;
-    }
-
-    // Maybe build clay robot
-    if state.ore >= bp.clay_robot_ore_c && state.clay_r < bp.max_clay_r {
-        let geodes = search2(
-            bp,
-            cache,
-            num_states,
-            cutoff,
-            State {
-                ore: next_state.ore - bp.clay_robot_ore_c,
-                clay_r: next_state.clay_r + 1,
-                ..next_state
-            },
-        );
-
-        if geodes > max_geodes {
-            max_geodes = geodes;
+        if can_build_clay && !skip_clay {
+            maxlist.push(dfs(
+                bp,
+                global_max,
+                0,
+                min - 1,
+                o + or - coc,
+                c + cr,
+                b + br,
+                g + gr,
+                or,
+                cr + 1,
+                br,
+                gr,
+            ))
         }
-    }
 
-    // Maybe build ore robot
-    if state.ore >= bp.ore_robot_ore_c && state.ore_r < bp.max_ore_r {
-        let geodes = search2(
-            bp,
-            cache,
-            num_states,
-            cutoff,
-            State {
-                ore: next_state.ore - bp.ore_robot_ore_c,
-                ore_r: next_state.ore_r + 1,
-                ..next_state
-            },
-        );
-
-        if geodes > max_geodes {
-            max_geodes = geodes;
+        if can_build_ore && !skip_ore {
+            maxlist.push(dfs(
+                bp,
+                global_max,
+                0,
+                min - 1,
+                o + or - ooc,
+                c + cr,
+                b + br,
+                g + gr,
+                or + 1,
+                cr,
+                br,
+                gr,
+            ))
         }
+
+        let mut new_skip_list = 0;
+        if can_build_obs {
+            new_skip_list |= SKIP_OBS;
+        }
+        if can_build_ore {
+            new_skip_list |= SKIP_ORE;
+        }
+        if can_build_clay {
+            new_skip_list |= SKIP_CLAY;
+        }
+
+        maxlist.push(dfs(
+            bp,
+            global_max,
+            new_skip_list,
+            min - 1,
+            o + or,
+            c + cr,
+            b + br,
+            g + gr,
+            or,
+            cr,
+            br,
+            gr,
+        ));
+
+        let new_max = maxlist.iter().max().unwrap();
+        if new_max > global_max {
+            *global_max = *new_max;
+        }
+
+        *new_max
     }
-
-    // Don't build anything, just let existing robots produce more resources
-    let geodes = search2(bp, cache, num_states, cutoff, next_state);
-
-    if geodes > max_geodes {
-        max_geodes = geodes;
-    }
-
-    cache.insert(state, max_geodes);
-    return max_geodes;
 }
 
-fn search(bp: &Blueprint, cutoff: i32, minutes_left: i32) -> i32 {
-    let mut cache = FnvHashMap::default();
-    let mut num_states = 0;
-    let n = search2(
+fn search(bp: &Blueprint, minutes_left: i32) -> i32 {
+    let mut global_max = 0;
+    dfs(
         &bp,
-        &mut cache,
-        &mut num_states,
-        cutoff,
-        State::default(minutes_left),
-    );
-
-    return n;
+        &mut global_max,
+        0,
+        minutes_left,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+    )
 }
 
 pub fn solve() -> (i32, i32) {
     let input_bytes = include_bytes!("../inputs/input19.txt");
     let blueprints = Blueprint::parse_blueprints(input_bytes);
 
-    // Cutoff numbers found by trial-and-error... :)
-    let cutoff_p1 = 2;
-    let cutoff_p2 = 18;
-
     // Check all blueprints in parallel, then collect the results
     blueprints
         .iter()
-        .map(|bp| (true, cutoff_p1, bp))
+        .map(|bp| (true, bp))
         .chain(
             blueprints
                 .iter()
                 .filter(|bp| bp.nr <= 3)
-                .map(|bp| (false, cutoff_p2, bp)),
+                .map(|bp| (false, bp)),
         )
         .par_bridge()
         .into_par_iter()
-        .map(|(part, cutoff, bp)| match part {
-            true => (part, search(&bp, cutoff, 24) * bp.nr),
-            false => (part, search(&bp, cutoff, 32)),
+        .map(|(part, bp)| match part {
+            true => (part, search(&bp, 24) * bp.nr),
+            false => (part, search(&bp, 32)),
         })
         .collect::<Vec<(bool, i32)>>()
         .iter()
