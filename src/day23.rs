@@ -9,8 +9,6 @@ const WEST: i32 = 2;
 const EAST: i32 = 3;
 
 fn do_one_round(elves: &mut HashMap<Pos, ()>, round: i32) -> bool {
-    let mut movemap: HashMap<Pos, i32> = HashMap::new();
-
     // Compute the proposed moves in parallel
     let proposed_moves: Vec<(Pos, Pos)> = elves
         .par_keys()
@@ -25,17 +23,23 @@ fn do_one_round(elves: &mut HashMap<Pos, ()>, round: i32) -> bool {
         })
         .collect();
 
+    // Is there a way to parallelize this step?
+    let mut movemap: HashMap<Pos, i32> = HashMap::new();
     for (_elf, proposed_move) in &proposed_moves {
         *movemap.entry(*proposed_move).or_insert(0) += 1;
     }
 
-    let mut non_conflicting_moves: Vec<(Pos, Pos)> = Vec::new();
-
-    for (elf, move_to) in &proposed_moves {
-        if (*movemap.get(move_to).unwrap_or(&0)) < 2 {
-            non_conflicting_moves.push((*elf, *move_to));
-        }
-    }
+    // This loop does not seem to be beneficial to parallelize
+    let non_conflicting_moves: Vec<(Pos, Pos)> = proposed_moves
+        .iter()
+        .filter_map(|(elf, move_to)| {
+            if (*movemap.get(move_to).unwrap_or(&0)) < 2 {
+                Some((*elf, *move_to))
+            } else {
+                None
+            }
+        })
+        .collect();
 
     if non_conflicting_moves.len() == 0 {
         false
