@@ -26,6 +26,7 @@ mod day19;
 mod day20;
 mod day21;
 mod day22;
+mod day23;
 
 #[derive(Parser)]
 struct Cli {
@@ -139,6 +140,7 @@ fn main() {
             assert_eq!((268597611536314, 3451534022348), day21::solve())
         }),
         Puzzle::make(22, || assert_eq!((56372, 197047), day22::solve())),
+        Puzzle::make(23, || assert_eq!((3684, 862), day23::solve())),
     ];
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");
