@@ -19,7 +19,8 @@ impl Expr {
         Expr::Expr(Box::new(lhs), op, Box::new(rhs))
     }
 }
-gfn yell(monkey: &str, rules: &HashMap<String, Rule>) -> i64 {
+
+fn yell(monkey: &str, rules: &HashMap<String, Rule>) -> i64 {
     match rules.get(monkey).unwrap() {
         Rule::MathOp(lhs, op, rhs) => match op {
             '+' => yell(lhs, rules) + yell(rhs, rules),

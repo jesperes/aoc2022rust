@@ -25,6 +25,7 @@ mod day18;
 mod day19;
 mod day20;
 mod day21;
+mod day22;
 
 #[derive(Parser)]
 struct Cli {
@@ -46,6 +47,8 @@ impl Puzzle {
 }
 
 fn run_puzzles(puzzles: Vec<Puzzle>, max_reps: usize) {
+    let mut total_runtime = Duration::default();
+    let len = puzzles.len();
     for p in puzzles {
         const MAX_SECS: u64 = 5;
         let mut runtimes: Vec<Duration> = vec![];
@@ -68,7 +71,15 @@ fn run_puzzles(puzzles: Vec<Puzzle>, max_reps: usize) {
             avg_runtime.as_nanos(),
             runtimes.len()
         );
+        total_runtime += avg_runtime;
     }
+
+    println!(
+        "Average runtime per puzzle: {:.2} ms",
+        (total_runtime.as_millis() as f64) / len as f64
+    );
+
+    println!("Total runtime: {} ms", total_runtime.as_millis());
 }
 
 fn day5_sol() -> (String, String) {
@@ -127,10 +138,11 @@ fn main() {
         Puzzle::make(21, || {
             assert_eq!((268597611536314, 3451534022348), day21::solve())
         }),
+        Puzzle::make(22, || assert_eq!((56372, 197047), day22::solve())),
     ];
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");
-        run_puzzles(all_puzzles, 100);
+        run_puzzles(all_puzzles, 1);
     } else {
         // Only run specified puzzles
         let subset: Vec<Puzzle> = all_puzzles
