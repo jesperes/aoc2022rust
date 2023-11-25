@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
-use fnv::FnvHashSet;
+use hashbrown::HashMap;
+use rayon::iter::ParallelIterator;
 
 type Pos = (i32, i32);
 
@@ -9,27 +8,32 @@ const SOUTH: i32 = 1;
 const WEST: i32 = 2;
 const EAST: i32 = 3;
 
-fn do_one_round(elves: &mut FnvHashSet<Pos>, round: i32) -> bool {
-    let mut elfmap: HashMap<Pos, Pos> = HashMap::new();
+fn do_one_round(elves: &mut HashMap<Pos, ()>, round: i32) -> bool {
     let mut movemap: HashMap<Pos, i32> = HashMap::new();
 
-    for elf in elves.iter() {
-        let possible_moves = possible_moves(&elf, round, &elves);
-        let num_moves = possible_moves.len();
-        if num_moves == 0 || num_moves == 4 {
-            continue;
-        } else {
-            let proposed_move = possible_moves.first().unwrap();
-            elfmap.insert(*elf, *proposed_move);
-            *movemap.entry(*proposed_move).or_insert(0) += 1;
-        }
+    // Compute the proposed moves in parallel
+    let proposed_moves: Vec<(Pos, Pos)> = elves
+        .par_keys()
+        .filter_map(|elf| {
+            let possible_moves = possible_moves(&elf, round, &elves);
+            let num_moves = possible_moves.len();
+            if num_moves == 0 || num_moves == 4 {
+                None
+            } else {
+                Some((elf.clone(), possible_moves.first().unwrap().clone()))
+            }
+        })
+        .collect();
+
+    for (_elf, proposed_move) in &proposed_moves {
+        *movemap.entry(*proposed_move).or_insert(0) += 1;
     }
 
     let mut non_conflicting_moves: Vec<(Pos, Pos)> = Vec::new();
 
-    for (elf, move_to) in elfmap {
-        if (*movemap.get(&move_to).unwrap_or(&0)) < 2 {
-            non_conflicting_moves.push((elf, move_to));
+    for (elf, move_to) in &proposed_moves {
+        if (*movemap.get(move_to).unwrap_or(&0)) < 2 {
+            non_conflicting_moves.push((*elf, *move_to));
         }
     }
 
@@ -38,13 +42,13 @@ fn do_one_round(elves: &mut FnvHashSet<Pos>, round: i32) -> bool {
     } else {
         for (from, to) in non_conflicting_moves {
             elves.remove(&from);
-            elves.insert(to);
+            elves.insert(to, ());
         }
         true
     }
 }
 
-fn possible_moves(elf: &Pos, round: i32, elves: &FnvHashSet<Pos>) -> Vec<Pos> {
+fn possible_moves(elf: &Pos, round: i32, elves: &HashMap<Pos, ()>) -> Vec<Pos> {
     let (x, y) = elf;
     let mut moves: Vec<Pos> = Vec::new();
     for n in 0..4 {
@@ -69,7 +73,7 @@ fn possible_moves(elf: &Pos, round: i32, elves: &FnvHashSet<Pos>) -> Vec<Pos> {
             _ => unreachable!(),
         };
 
-        if !adj.iter().any(|elem| elves.contains(elem)) {
+        if !adj.iter().any(|elem| elves.contains_key(elem)) {
             moves.push(match dir {
                 NORTH => (*x, y - 1),
                 SOUTH => (*x, y + 1),
@@ -82,13 +86,13 @@ fn possible_moves(elf: &Pos, round: i32, elves: &FnvHashSet<Pos>) -> Vec<Pos> {
     return moves;
 }
 
-fn find_p1(elves: &FnvHashSet<Pos>) -> i32 {
+fn find_p1(elves: &HashMap<Pos, ()>) -> i32 {
     let mut min_x = i32::MAX;
     let mut max_x = i32::MIN;
     let mut min_y = i32::MAX;
     let mut max_y = i32::MIN;
 
-    for (x, y) in elves {
+    for (x, y) in elves.keys() {
         min_x = (*x).min(min_x);
         max_x = (*x).max(max_x);
         min_y = (*y).min(min_y);
@@ -100,7 +104,7 @@ fn find_p1(elves: &FnvHashSet<Pos>) -> i32 {
 
 pub fn solve() -> (i32, i32) {
     let bytes = include_bytes!("../inputs/input23.txt");
-    let mut elves: FnvHashSet<Pos> = FnvHashSet::default();
+    let mut elves: HashMap<Pos, ()> = HashMap::new();
 
     String::from_utf8_lossy(bytes)
         .split("\n")
@@ -108,7 +112,7 @@ pub fn solve() -> (i32, i32) {
         .for_each(|(y, line)| {
             line.chars().enumerate().for_each(|(x, c)| {
                 if c == '#' {
-                    elves.insert((x as i32, y as i32));
+                    elves.insert((x as i32, y as i32), ());
                 }
             });
         });

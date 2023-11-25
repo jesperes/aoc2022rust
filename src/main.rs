@@ -30,6 +30,9 @@ mod day23;
 
 #[derive(Parser)]
 struct Cli {
+    #[arg(short, long)]
+    reps: usize,
+
     puzzles: Vec<String>,
 }
 
@@ -144,7 +147,7 @@ fn main() {
     ];
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");
-        run_puzzles(all_puzzles, 1);
+        run_puzzles(all_puzzles, args.reps);
     } else {
         // Only run specified puzzles
         let subset: Vec<Puzzle> = all_puzzles
@@ -158,7 +161,7 @@ fn main() {
                 args.puzzles
             );
         } else {
-            run_puzzles(subset, 1);
+            run_puzzles(subset, args.reps);
         }
     }
 }
