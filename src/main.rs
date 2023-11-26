@@ -27,10 +27,11 @@ mod day20;
 mod day21;
 mod day22;
 mod day23;
+mod day24;
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(short, long)]
+    #[arg(short, long, default_value_t = 1)]
     reps: usize,
 
     puzzles: Vec<String>,
@@ -144,6 +145,7 @@ fn main() {
         }),
         Puzzle::make(22, || assert_eq!((56372, 197047), day22::solve())),
         Puzzle::make(23, || assert_eq!((3684, 862), day23::solve())),
+        Puzzle::make(24, || assert_eq!((245, 798), day24::solve())),
     ];
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");

@@ -235,7 +235,8 @@ pub fn solve() -> (i32, i32) {
     let input_bytes = include_bytes!("../inputs/input19.txt");
     let blueprints = Blueprint::parse_blueprints(input_bytes);
 
-    // Check all blueprints in parallel, then collect the results
+    // Check all blueprints in parallel, then collect the results. Note that
+    // we run all (both p1 and p2) blueprints in parallel.
     blueprints
         .iter()
         .map(|bp| (true, bp))
