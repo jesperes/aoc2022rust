@@ -31,8 +31,11 @@ mod day24;
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(short, long, default_value_t = 1)]
-    reps: usize,
+    #[arg(short = 'r', long, default_value_t = 1)]
+    max_reps: usize,
+
+    #[arg(short = 's', long, default_value_t = 5)]
+    max_secs: u64,
 
     puzzles: Vec<String>,
 }
@@ -51,11 +54,10 @@ impl Puzzle {
     }
 }
 
-fn run_puzzles(puzzles: Vec<Puzzle>, max_reps: usize) {
+fn run_puzzles(puzzles: Vec<Puzzle>, args: &Cli) {
     let mut total_runtime = Duration::default();
     let len = puzzles.len();
     for p in puzzles {
-        const MAX_SECS: u64 = 5;
         let mut runtimes: Vec<Duration> = vec![];
         let start = std::time::Instant::now();
 
@@ -63,7 +65,7 @@ fn run_puzzles(puzzles: Vec<Puzzle>, max_reps: usize) {
             let t = std::time::Instant::now();
             (p.fun)();
             runtimes.push(t.elapsed());
-            if start.elapsed().as_secs() >= MAX_SECS || runtimes.len() >= max_reps {
+            if start.elapsed().as_secs() >= args.max_secs || runtimes.len() >= args.max_reps {
                 break;
             }
         }
@@ -149,7 +151,7 @@ fn main() {
     ];
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");
-        run_puzzles(all_puzzles, args.reps);
+        run_puzzles(all_puzzles, &args);
     } else {
         // Only run specified puzzles
         let subset: Vec<Puzzle> = all_puzzles
@@ -163,7 +165,7 @@ fn main() {
                 args.puzzles
             );
         } else {
-            run_puzzles(subset, args.reps);
+            run_puzzles(subset, &args);
         }
     }
 }
