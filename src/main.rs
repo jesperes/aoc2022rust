@@ -28,7 +28,7 @@ mod day21;
 mod day22;
 mod day23;
 mod day24;
-
+mod day25;
 #[derive(Parser)]
 struct Cli {
     #[arg(short = 'r', long, default_value_t = 1)]
@@ -83,7 +83,7 @@ fn run_puzzles(puzzles: Vec<Puzzle>, args: &Cli) {
 
     println!(
         "Average runtime per puzzle: {:.2} ms",
-        (total_runtime.as_millis() as f64) / len as f64
+        total_runtime.as_millis() as f64 / len as f64
     );
 
     println!("Total runtime: {} ms", total_runtime.as_millis());
@@ -148,6 +148,7 @@ fn main() {
         Puzzle::make(22, || assert_eq!((56372, 197047), day22::solve())),
         Puzzle::make(23, || assert_eq!((3684, 862), day23::solve())),
         Puzzle::make(24, || assert_eq!((245, 798), day24::solve())),
+        Puzzle::make(25, || assert_eq!(("2=0=02-0----2-=02-10"), day25::solve())),
     ];
     if args.puzzles.len() == 0 {
         println!("Running all puzzles.");
